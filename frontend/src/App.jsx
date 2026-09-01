@@ -97,10 +97,16 @@ export default function App() {
       setAnswerData(data);
     } catch (e) {
       console.error('Error asking question:', e);
+      setAnswerData({
+        answer: 'Unable to connect to the backend server. Please verify network connectivity.',
+        has_relevant_info: false,
+        primary_chunks: [],
+      });
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div style={styles.appContainer}>
