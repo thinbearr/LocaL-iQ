@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -15,7 +16,7 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5000/api/settings')
+    fetch(`${API_BASE_URL}/api/settings`)
       .then((res) => res.json())
       .then((data) => setSettings(data))
       .catch((err) => console.error('Error fetching settings:', err));
@@ -25,7 +26,7 @@ export default function SettingsPage() {
     setSaving(true);
     setMsg('');
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/settings', {
+      const res = await fetch(`${API_BASE_URL}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
@@ -159,13 +160,14 @@ const styles = {
     maxWidth: '800px',
   },
   title: {
-    fontFamily: "'Instrument Serif', Georgia, serif",
+    fontFamily: "'Newsreader', Georgia, serif",
     fontSize: '2.8rem',
-    fontWeight: 400,
+    fontWeight: 500,
     color: '#FFFFFF',
     marginBottom: '4px',
   },
   subtitle: {
+    fontFamily: "'Roboto', sans-serif",
     fontSize: '0.95rem',
     color: '#8C9BAE',
     marginBottom: '24px',
@@ -178,6 +180,7 @@ const styles = {
     padding: '12px 16px',
     marginBottom: '20px',
     fontSize: '0.9rem',
+    fontFamily: "'Roboto', sans-serif",
   },
   card: {
     backgroundColor: '#121722',
@@ -187,6 +190,7 @@ const styles = {
     marginBottom: '24px',
   },
   cardHeader: {
+    fontFamily: "'Roboto', sans-serif",
     fontSize: '0.75rem',
     fontWeight: 700,
     color: '#64748B',
@@ -198,6 +202,7 @@ const styles = {
   },
   label: {
     display: 'block',
+    fontFamily: "'Roboto', sans-serif",
     fontSize: '0.9rem',
     color: '#8C9BAE',
     marginBottom: '8px',
@@ -211,6 +216,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
+    fontFamily: "'Roboto', sans-serif",
     fontSize: '0.92rem',
     color: '#F0F4F8',
     cursor: 'pointer',
@@ -235,6 +241,7 @@ const styles = {
     border: 'none',
     borderRadius: '8px',
     color: '#FFFFFF',
+    fontFamily: "'Roboto', sans-serif",
     padding: '12px 24px',
     fontSize: '0.95rem',
     fontWeight: 700,

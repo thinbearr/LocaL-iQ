@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 export default function KnowledgeBasePage({ status, vaults, vaultScope, selectedVaults, onSelectVault, onRescan, onSync }) {
   const [documents, setDocuments] = useState([]);
@@ -7,7 +8,7 @@ export default function KnowledgeBasePage({ status, vaults, vaultScope, selected
   const fetchDocuments = async () => {
     setLoadingDocs(true);
     try {
-      const url = `http://127.0.0.1:5000/api/documents?vault_scope=${encodeURIComponent(vaultScope)}&selected_vaults=${encodeURIComponent(selectedVaults.join(','))}`;
+      const url = `${API_BASE_URL}/api/documents?vault_scope=${encodeURIComponent(vaultScope)}&selected_vaults=${encodeURIComponent(selectedVaults.join(','))}`;
       const res = await fetch(url);
       const data = await res.json();
       setDocuments(data.documents || []);
@@ -24,7 +25,7 @@ export default function KnowledgeBasePage({ status, vaults, vaultScope, selected
 
   const handleDelete = async (fileName) => {
     try {
-      await fetch(`http://127.0.0.1:5000/api/documents/${encodeURIComponent(fileName)}`, {
+      await fetch(`${API_BASE_URL}/api/documents/${encodeURIComponent(fileName)}`, {
         method: 'DELETE',
       });
       fetchDocuments();

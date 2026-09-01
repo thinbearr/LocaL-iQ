@@ -5,6 +5,7 @@ import AskPage from './components/AskPage';
 import KnowledgeBasePage from './components/KnowledgeBasePage';
 import RetrievalInspectorPage from './components/RetrievalInspectorPage';
 import SettingsPage from './components/SettingsPage';
+import { API_BASE_URL } from './config';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('ask');
@@ -17,7 +18,7 @@ export default function App() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/status');
+      const res = await fetch(`${API_BASE_URL}/api/status`);
       const data = await res.json();
       setStatus(data);
       if (data.active_vault_name && selectedVaults.length === 0) {
@@ -30,7 +31,7 @@ export default function App() {
 
   const fetchVaults = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/vaults');
+      const res = await fetch(`${API_BASE_URL}/api/vaults`);
       const data = await res.json();
       setVaults(data.vaults || []);
       if (data.vaults && data.vaults.length > 0 && selectedVaults.length === 0) {
@@ -48,7 +49,7 @@ export default function App() {
 
   const handleSelectVault = async (vaultPath) => {
     try {
-      await fetch('http://127.0.0.1:5000/api/vaults/select', {
+      await fetch(`${API_BASE_URL}/api/vaults/select`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vault_path: vaultPath }),
@@ -62,7 +63,7 @@ export default function App() {
 
   const handleRescan = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/vaults/rescan', { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/api/vaults/rescan`, { method: 'POST' });
       const data = await res.json();
       setVaults(data.vaults || []);
       fetchStatus();
@@ -73,7 +74,7 @@ export default function App() {
 
   const handleSync = async () => {
     try {
-      await fetch('http://127.0.0.1:5000/api/vaults/sync', { method: 'POST' });
+      await fetch(`${API_BASE_URL}/api/vaults/sync`, { method: 'POST' });
       fetchStatus();
     } catch (e) {
       console.error('Error syncing vault:', e);
@@ -83,7 +84,7 @@ export default function App() {
   const handleAsk = async (queryText) => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/ask', {
+      const res = await fetch(`${API_BASE_URL}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
