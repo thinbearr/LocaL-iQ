@@ -1,0 +1,39 @@
+# Python & Pytest
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Environments
+venv/
+.venv/
+env/
+ENV/
+
+# ChromaDB & Local Vector Storage
+chroma_db/
+.chroma_db/
+*.sqlite3
+*.bin
+tests/eval_chroma_db/
+tests/tmp_chroma_db/
+.vault_discovery_cache.json
+
+# Frontend Dependencies & Build Output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Environment Variables & Keys
+.env
+.env.local
+
+# OS & IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

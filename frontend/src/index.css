@@ -1,0 +1,91 @@
+/* LocaL-iQ Dark-Mode Only Design Tokens & Typography System */
+:root {
+  --bg-app: #0B0E14;
+  --bg-sidebar: #121722;
+  --bg-surface: #121722;
+  --bg-card: #182030;
+  --border-subtle: #1E2638;
+  --border-card: #243048;
+  
+  --text-primary: #F0F4F8;
+  --text-secondary: #8C9BAE;
+  --text-muted: #64748B;
+  
+  --accent-teal: #00A896;
+  --accent-teal-light: #2DD4BF;
+  --accent-teal-glow: rgba(0, 168, 150, 0.15);
+  
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-sans: 'Roboto', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Typography Classes */
+.font-serif { font-family: var(--font-serif); font-weight: 500; }
+.font-sans { font-family: var(--font-sans); }
+.font-mono { font-family: var(--font-mono); }
+
+/* SVG Icon Helper */
+.icon-svg {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+/* Custom Checkbox Styling */
+.custom-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.custom-checkbox-container:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.custom-checkbox-input {
+  accent-color: var(--accent-teal);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
