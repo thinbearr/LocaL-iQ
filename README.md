@@ -245,12 +245,35 @@ LocaL-iQ/
 │   ├── test_multi_file_kb.py
 │   ├── test_retriever.py
 │   └── test_vault_parser.py
-├── server.py                     # Flask REST API server
+├── server.py                     # Local desktop Flask REST API server (Obsidian discovery)
+├── demo_server.py                # Public Render deployment server (sample_vault RAG)
+├── Procfile                      # Render production deployment configuration
 ├── requirements.txt              # Python backend dependencies
 ├── .env.example                  # Environment configuration template
 ├── .gitignore                    # Git exclude rules
 └── README.md                     # Project documentation
 ```
+
+---
+
+## 🌐 Local vs Public Demo Architecture
+
+LocaL-iQ maintains a strict separation between local desktop execution and public cloud deployment:
+
+### 🏠 Local Installation (`server.py`)
+* **Run Normal Backend**: Execute `python server.py`.
+* **Automatic Vault Discovery**: LocaL-iQ automatically discovers Obsidian vaults on your machine by scanning standard user directories for `.obsidian/` configurations.
+* **Full Multi-Vault Control**: Supports multi-vault scope filtering, custom directory selection, and real-time incremental synchronization.
+* **Privacy First**: Your actual local Obsidian notes remain 100% private and serve as your knowledge base.
+
+### ☁️ Public Cloud Demo (`demo_server.py`)
+* **Render Web Deployment**: The hosted live web application executes `demo_server.py` (configured via `Procfile`).
+* **Bundled Knowledge Base**: Operates exclusively over the repository's bundled `sample_vault/`.
+* **Isolated from Local Discovery**: Intentionally skips local filesystem scanning because a cloud server cannot access a visitor's local desktop filesystem.
+* **Real RAG Pipeline**: Uses the **exact same genuine RAG system** (`HybridRerankedRetriever` + `GeminiLLMGenerator` + `ChromaVectorStore`) to retrieve evidence and generate answers grounded in `sample_vault/` without mock data.
+
+> [!IMPORTANT]
+> **Local Desktop Users**: Do not install or run `demo_server.py` for local development. Always launch `server.py` to enable full local Obsidian vault discovery and multi-vault functionality.
 
 ---
 
