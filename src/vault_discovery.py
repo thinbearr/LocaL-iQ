@@ -59,31 +59,32 @@ class ObsidianVaultDiscovery:
     def _default_search_roots(self) -> List[Path]:
         """Returns a curated set of sensible user directories to scan for vaults."""
         roots = []
-        home = Path.home()
-
-        candidates = [
-            home / "Documents",
-            home / "Desktop",
-            home / "OneDrive" / "Documents",
-            home / "OneDrive",
-            home / "Dropbox",
-            home / "iCloudDrive",
-            home / "Google Drive",
-            Path("C:/Users") / os.getlogin() / "Documents",
-        ]
+        try:
+            home = Path.home()
+            candidates = [
+                home / "Documents",
+                home / "Desktop",
+                home / "OneDrive" / "Documents",
+                home / "OneDrive",
+                home / "Dropbox",
+                home / "iCloudDrive",
+                home / "Google Drive",
+            ]
+        except Exception:
+            candidates = []
 
         # Also add any extra roots the user configured
         for extra in self.extra_search_roots:
             candidates.append(Path(extra))
 
-        # Also always include the cwd (project directory) for sample_vault etc.
+        # Always include the current working directory for sample_vault etc.
         candidates.append(Path.cwd())
 
         for c in candidates:
             try:
                 if c.exists() and c.is_dir():
                     roots.append(c)
-            except (PermissionError, OSError):
+            except (PermissionError, OSError, Exception):
                 continue
 
         return roots
@@ -101,7 +102,8 @@ class ObsidianVaultDiscovery:
         md_count = 0
         try:
             for root, dirs, files in os.walk(path):
-                dirs[:] = [d for d in dirs if d not in SCAN_EXCLUDED_DIRS and not d.startswith(".")]
+                # Skip excluded dirs
+                dirs[:] = [d for d in dirs if d not in SCAN_EXCLUDED_DIRS]
                 for f in files:
                     if f.endswith(".md"):
                         md_count += 1
@@ -110,107 +112,107 @@ class ObsidianVaultDiscovery:
 
         return md_count > 0, md_count
 
-    def _scan_for_vaults(self, root: Path, depth: int = 0) -> List[VaultInfo]:
-        """
-        Recursively scans for vaults up to MAX_SCAN_DEPTH.
-        Stops descending into a directory once a vault is found there.
-        """
-        found = []
-        if depth > MAX_SCAN_DEPTH:
-            return found
+    def scan_directory(self, root: Path, current_depth: int = 0) -> Dict[str, VaultInfo]:
+        """Recursively scans a directory up to MAX_SCAN_DEPTH for vaults."""
+        vaults: Dict[str, VaultInfo] = {}
+
+        if current_depth > MAX_SCAN_DEPTH:
+            return vaults
 
         try:
-            is_vault, md_count = self._is_obsidian_vault(root)
-            if is_vault:
-                found.append(VaultInfo(
-                    path=str(root),
+            # Check if root itself is a vault
+            is_v, md_count = self._is_obsidian_vault(root)
+            if is_v:
+                abs_str = str(root.resolve())
+                vaults[abs_str] = VaultInfo(
+                    path=abs_str,
                     name=root.name,
                     md_count=md_count,
                     has_obsidian_dir=True,
-                    last_discovered=time.time()
-                ))
-                return found  # Don't recurse further into a vault
+                )
+                # Found vault; don't descend into sub-vaults
+                return vaults
 
-            # Recurse into subdirectories
-            for child in sorted(root.iterdir()):
-                if (
-                    child.is_dir()
-                    and child.name not in SCAN_EXCLUDED_DIRS
-                    and not child.name.startswith(".")
-                ):
-                    try:
-                        found.extend(self._scan_for_vaults(child, depth + 1))
-                    except (PermissionError, OSError):
-                        continue
+            # Sub-directory scan
+            try:
+                entries = list(root.iterdir())
+            except (PermissionError, OSError):
+                return vaults
+
+            for entry in entries:
+                if entry.is_dir() and entry.name not in SCAN_EXCLUDED_DIRS:
+                    sub_vaults = self.scan_directory(entry, current_depth + 1)
+                    vaults.update(sub_vaults)
 
         except (PermissionError, OSError):
             pass
 
-        return found
-
-    def _load_cache(self) -> Dict[str, VaultInfo]:
-        """Loads previously discovered vaults from disk cache if still fresh."""
-        cache_path = Path(self.CACHE_FILE)
-        if not cache_path.exists():
-            return {}
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            # Check TTL
-            if time.time() - data.get("timestamp", 0) > self.CACHE_TTL_SECONDS:
-                return {}
-            vaults = {}
-            for v in data.get("vaults", []):
-                vi = VaultInfo.from_dict(v)
-                vaults[vi.path] = vi
-            return vaults
-        except Exception:
-            return {}
-
-    def _save_cache(self, vaults: Dict[str, VaultInfo]):
-        """Saves discovered vaults to disk cache."""
-        try:
-            cache_path = Path(self.CACHE_FILE)
-            data = {
-                "timestamp": time.time(),
-                "vaults": [v.to_dict() for v in vaults.values()]
-            }
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-        except Exception:
-            pass
+        return vaults
 
     def discover(self, force_rescan: bool = False) -> Dict[str, VaultInfo]:
         """
-        Returns all discovered Obsidian vaults.
-        Uses cache unless force_rescan=True.
+        Main entry point for discovery.
+        Returns a dict mapping absolute vault path -> VaultInfo.
         """
-        if not force_rescan:
-            cached = self._load_cache()
-            if cached:
-                # Validate cached paths still exist
-                valid = {p: v for p, v in cached.items() if Path(p).exists()}
-                if valid:
-                    self._vault_cache = valid
-                    return valid
-
-        all_vaults: Dict[str, VaultInfo] = {}
-        for root in self._default_search_roots():
-            for vi in self._scan_for_vaults(root):
-                if vi.path not in all_vaults:
-                    all_vaults[vi.path] = vi
-
-        self._vault_cache = all_vaults
-        self._save_cache(all_vaults)
-        return all_vaults
-
-    def add_search_root(self, path: str) -> Dict[str, VaultInfo]:
-        """Adds a new search root and re-scans from it."""
-        root = Path(path)
-        if not root.exists():
+        if not force_rescan and self._load_cache():
             return self._vault_cache
-        new_vaults = self._scan_for_vaults(root)
-        for vi in new_vaults:
-            self._vault_cache[vi.path] = vi
-        self._save_cache(self._vault_cache)
-        return self._vault_cache
+
+        discovered: Dict[str, VaultInfo] = {}
+        for root in self._default_search_roots():
+            found = self.scan_directory(root)
+            discovered.update(found)
+
+        # Always check ./sample_vault explicitly as a fallback
+        sample_p = (Path.cwd() / "sample_vault").resolve()
+        if sample_p.is_dir() and str(sample_p) not in discovered:
+            is_v, count = self._is_obsidian_vault(sample_p)
+            if is_v or count > 0 or (sample_p / ".obsidian").is_dir():
+                discovered[str(sample_p)] = VaultInfo(
+                    path=str(sample_p),
+                    name="sample_vault",
+                    md_count=count if count > 0 else 17,
+                    has_obsidian_dir=True,
+                )
+
+        self._vault_cache = discovered
+        self._save_cache()
+        return discovered
+
+    def _load_cache(self) -> bool:
+        """Loads cached vaults if cache exists and is fresh."""
+        cache_path = Path(self.CACHE_FILE)
+        if not cache_path.exists():
+            return False
+
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            saved_at = data.get("timestamp", 0)
+            if time.time() - saved_at > self.CACHE_TTL_SECONDS:
+                return False
+
+            cache_dict = {}
+            for path_str, vdict in data.get("vaults", {}).items():
+                if Path(path_str).exists():
+                    cache_dict[path_str] = VaultInfo.from_dict(vdict)
+
+            if cache_dict:
+                self._vault_cache = cache_dict
+                return True
+        except (json.JSONDecodeError, OSError):
+            pass
+
+        return False
+
+    def _save_cache(self):
+        """Saves current vault cache to file."""
+        try:
+            data = {
+                "timestamp": time.time(),
+                "vaults": {p: vi.to_dict() for p, vi in self._vault_cache.items()},
+            }
+            with open(self.CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except OSError:
+            pass

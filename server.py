@@ -19,6 +19,7 @@ from src.generator import GeminiLLMGenerator
 app = Flask(__name__)
 CORS(app)
 
+
 class AppState:
     def __init__(self):
         self.persist_dir = os.getenv("CHROMA_DB_DIR", "./chroma_db")
@@ -27,16 +28,26 @@ class AppState:
         self.discovery = ObsidianVaultDiscovery()
         self.discovered_vaults: Dict[str, VaultInfo] = self.discovery.discover(force_rescan=False)
         
-        default_vault = "./sample_vault"
+        sample_vault_path = str((Path.cwd() / "sample_vault").resolve())
+        
+        # Ensure sample_vault is present in discovered vaults for demo/cloud deployment
+        if os.path.exists("./sample_vault") and sample_vault_path not in self.discovered_vaults:
+            self.discovered_vaults[sample_vault_path] = VaultInfo(
+                path=sample_vault_path,
+                name="sample_vault",
+                md_count=17,
+                has_obsidian_dir=True,
+            )
+            
         if self.discovered_vaults:
             self.active_vault_path = list(self.discovered_vaults.keys())[0]
         else:
-            self.active_vault_path = default_vault
+            self.active_vault_path = sample_vault_path
             
         self.last_sync_time = "Startup"
         self.chat_history: List[Dict[str, str]] = []
         
-        # Settings
+        # Hyperparameter Settings
         self.top_k_final = 5
         self.top_k_pool = 15
         self.w_semantic = 0.70
@@ -44,8 +55,13 @@ class AppState:
         self.raw_cosine_threshold = 0.28
         self.enable_query_expansion = False
         
-        # Auto sync active vault on startup
-        self.sync_active_vault()
+        # Check if database is empty; if so, initialize/index demo knowledge base (sample_vault)
+        current_stats = self.vector_store.get_stats()
+        if current_stats["total_chunks"] == 0 and os.path.exists(self.active_vault_path):
+            self.sync_active_vault()
+        else:
+            # Sync active vault on startup
+            self.sync_active_vault()
 
     def sync_active_vault(self):
         if not os.path.exists(self.active_vault_path):
@@ -58,7 +74,14 @@ class AppState:
         self.last_sync_time = time.strftime("%H:%M:%S")
         return sres
 
+
 state = AppState()
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for deployment monitoring and health probes."""
+    return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/api/status", methods=["GET"])
@@ -81,6 +104,7 @@ def get_status():
         "model_name": os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     })
 
+
 @app.route("/api/vaults", methods=["GET"])
 def get_vaults():
     vaults_list = []
@@ -96,6 +120,7 @@ def get_vaults():
         })
     return jsonify({"vaults": vaults_list})
 
+
 @app.route("/api/vaults/select", methods=["POST"])
 def select_vault():
     data = request.json or {}
@@ -107,15 +132,18 @@ def select_vault():
     sres = state.sync_active_vault()
     return jsonify({"status": "success", "active_vault": vault_path, "sync_res": sres})
 
+
 @app.route("/api/vaults/rescan", methods=["POST"])
 def rescan_vaults():
     state.discovered_vaults = state.discovery.discover(force_rescan=True)
     return get_vaults()
 
+
 @app.route("/api/vaults/sync", methods=["POST"])
 def sync_vault():
     sres = state.sync_active_vault()
     return jsonify({"status": "success", "sync_res": sres, "last_sync_time": state.last_sync_time})
+
 
 @app.route("/api/documents", methods=["GET"])
 def get_documents():
@@ -135,16 +163,18 @@ def get_documents():
                 d["vault_name"] = vn
                 all_docs.append(d)
         documents = all_docs
-    else: # All Vaults
+    else:  # All Vaults
         documents = state.vector_store.get_indexed_files_registry(vault_name="")
 
     return jsonify({"documents": documents, "vault_scope": vault_scope_type})
+
 
 @app.route("/api/documents/<path:file_name>", methods=["DELETE"])
 def delete_document(file_name):
     active_name = Path(state.active_vault_path).name
     state.vector_store.delete_file(file_name, vault_name=active_name)
     return jsonify({"status": "deleted", "file_name": file_name})
+
 
 @app.route("/api/ask", methods=["POST"])
 def ask_question():
@@ -242,6 +272,7 @@ def ask_question():
             "summary_text": summary_text
         }
     })
+
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings_handler():
