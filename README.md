@@ -170,7 +170,7 @@ cd ..
 ### 5. Start Backend REST API Server
 In one terminal window, run:
 ```bash
-python server.py
+gunicorn --bind 0.0.0.0:$PORT server:app
 ```
 *(Runs on `http://127.0.0.1:5000`)*
 
