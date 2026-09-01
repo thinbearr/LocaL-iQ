@@ -68,8 +68,8 @@ class AppState:
         if current_stats["total_chunks"] == 0 and os.path.exists(self.active_vault_path):
             self.sync_active_vault()
         else:
-            # Sync active vault on startup
-            self.sync_active_vault()
+            self.last_sync_time = "Loaded from cache"
+
 
     def sync_active_vault(self):
         if not os.path.exists(self.active_vault_path):

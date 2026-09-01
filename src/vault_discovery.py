@@ -58,7 +58,12 @@ class ObsidianVaultDiscovery:
 
     def _default_search_roots(self) -> List[Path]:
         """Returns a curated set of sensible user directories to scan for vaults."""
-        roots = []
+        roots = [Path.cwd()]
+
+        # In cloud server environments (e.g. Render, Heroku, Docker), only scan working directory
+        if os.getenv("RENDER") or os.getenv("PORT") or os.getenv("CONTAINER"):
+            return roots
+
         try:
             home = Path.home()
             candidates = [
@@ -70,24 +75,20 @@ class ObsidianVaultDiscovery:
                 home / "iCloudDrive",
                 home / "Google Drive",
             ]
+            for c in candidates:
+                if c.exists() and c.is_dir():
+                    roots.append(c)
         except Exception:
-            candidates = []
+            pass
 
         # Also add any extra roots the user configured
         for extra in self.extra_search_roots:
-            candidates.append(Path(extra))
-
-        # Always include the current working directory for sample_vault etc.
-        candidates.append(Path.cwd())
-
-        for c in candidates:
-            try:
-                if c.exists() and c.is_dir():
-                    roots.append(c)
-            except (PermissionError, OSError, Exception):
-                continue
+            p = Path(extra)
+            if p.exists() and p.is_dir() and p not in roots:
+                roots.append(p)
 
         return roots
+
 
     def _is_obsidian_vault(self, path: Path) -> Tuple[bool, int]:
         """
