@@ -63,12 +63,11 @@ class AppState:
         self.raw_cosine_threshold = 0.28
         self.enable_query_expansion = False
         
-        # Check if database is empty; if so, initialize/index demo knowledge base (sample_vault)
         current_stats = self.vector_store.get_stats()
-        if current_stats["total_chunks"] == 0 and os.path.exists(self.active_vault_path):
-            self.sync_active_vault()
-        else:
+        if current_stats["total_chunks"] > 0:
             self.last_sync_time = "Loaded from cache"
+        else:
+            self.last_sync_time = "Not synced"
 
 
     def sync_active_vault(self):
