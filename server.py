@@ -11,7 +11,7 @@ load_dotenv()
 from src.vault_parser import VaultParser, detect_obsidian_vault
 from src.vault_discovery import ObsidianVaultDiscovery, VaultInfo
 from src.chunker import MarkdownChunker
-from src.embedder import LocalEmbedder
+from src.embedder import get_embedder
 from src.vector_store import ChromaVectorStore
 from src.retriever import HybridRerankedRetriever, RetrievalResult
 from src.generator import GeminiLLMGenerator
@@ -23,7 +23,7 @@ CORS(app)
 class AppState:
     def __init__(self):
         self.persist_dir = os.getenv("CHROMA_DB_DIR", "./chroma_db")
-        self.embedder = LocalEmbedder()
+        self.embedder = get_embedder()
         self.vector_store = ChromaVectorStore(persist_dir=self.persist_dir)
         self.discovery = ObsidianVaultDiscovery()
         self.discovered_vaults: Dict[str, VaultInfo] = self.discovery.discover(force_rescan=False)
@@ -75,17 +75,29 @@ class AppState:
         return sres
 
 
-state = AppState()
+_state = None
+
+
+def get_state() -> AppState:
+    """Lazy-initializes AppState on first API request rather than at Flask import time."""
+    global _state
+    if _state is None:
+        _state = AppState()
+    return _state
 
 
 @app.route("/health", methods=["GET"])
 def health_check():
-    """Health check endpoint for deployment monitoring and health probes."""
+    """
+    Lightweight health check probe for deployment monitoring (Render, Railway, Kubernetes).
+    Responds instantly (< 10ms, < 20MB RAM) without triggering RAG state or model loading.
+    """
     return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/api/status", methods=["GET"])
 def get_status():
+    state = get_state()
     active_name = Path(state.active_vault_path).name
     is_vault, msg = detect_obsidian_vault(state.active_vault_path)
     v_stats = state.vector_store.get_vault_stats(active_name)
@@ -107,6 +119,7 @@ def get_status():
 
 @app.route("/api/vaults", methods=["GET"])
 def get_vaults():
+    state = get_state()
     vaults_list = []
     for p, vi in state.discovered_vaults.items():
         v_name = vi.name
@@ -123,6 +136,7 @@ def get_vaults():
 
 @app.route("/api/vaults/select", methods=["POST"])
 def select_vault():
+    state = get_state()
     data = request.json or {}
     vault_path = data.get("vault_path")
     if not vault_path or not os.path.exists(vault_path):
@@ -135,18 +149,21 @@ def select_vault():
 
 @app.route("/api/vaults/rescan", methods=["POST"])
 def rescan_vaults():
+    state = get_state()
     state.discovered_vaults = state.discovery.discover(force_rescan=True)
     return get_vaults()
 
 
 @app.route("/api/vaults/sync", methods=["POST"])
 def sync_vault():
+    state = get_state()
     sres = state.sync_active_vault()
     return jsonify({"status": "success", "sync_res": sres, "last_sync_time": state.last_sync_time})
 
 
 @app.route("/api/documents", methods=["GET"])
 def get_documents():
+    state = get_state()
     vault_scope_type = request.args.get("vault_scope", "Current Vault")
     selected_vaults_raw = request.args.get("selected_vaults", "")
     selected_vaults = [v.strip() for v in selected_vaults_raw.split(",") if v.strip()]
@@ -171,6 +188,7 @@ def get_documents():
 
 @app.route("/api/documents/<path:file_name>", methods=["DELETE"])
 def delete_document(file_name):
+    state = get_state()
     active_name = Path(state.active_vault_path).name
     state.vector_store.delete_file(file_name, vault_name=active_name)
     return jsonify({"status": "deleted", "file_name": file_name})
@@ -178,6 +196,7 @@ def delete_document(file_name):
 
 @app.route("/api/ask", methods=["POST"])
 def ask_question():
+    state = get_state()
     data = request.json or {}
     query = data.get("query", "").strip()
     if not query:
@@ -276,6 +295,7 @@ def ask_question():
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings_handler():
+    state = get_state()
     if request.method == "GET":
         return jsonify({
             "top_k_final": state.top_k_final,
@@ -309,4 +329,3 @@ def settings_handler():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-
