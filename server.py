@@ -127,6 +127,11 @@ def get_status():
 @app.route("/api/vaults", methods=["GET"])
 def get_vaults():
     state = get_state()
+    # Refresh discovered vaults using the existing cache mechanism.
+    # discover(force_rescan=False) re-scans from disk only when the cache is stale (>5 min),
+    # so newly created Obsidian vaults appear automatically without a server restart
+    # while still avoiding an expensive filesystem walk on every frontend poll.
+    state.discovered_vaults = state.discovery.discover(force_rescan=False)
     vaults_list = []
     for p, vi in state.discovered_vaults.items():
         v_name = vi.name
