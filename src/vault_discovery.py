@@ -206,12 +206,11 @@ class ObsidianVaultDiscovery:
             return combined
 
         discovered: Dict[str, VaultInfo] = {}
-        if cfg_vaults:
-            discovered.update(cfg_vaults)
-        else:
-            for root in self._default_search_roots():
-                found = self.scan_directory(root)
-                discovered.update(found)
+        discovered.update(cfg_vaults)
+
+        for root in self._default_search_roots():
+            found = self.scan_directory(root)
+            discovered.update(found)
 
         # Always check ./sample_vault explicitly as a fallback
         sample_p = (Path.cwd() / "sample_vault").resolve()

@@ -11,7 +11,13 @@ export default function AskPage({ status, onAsk, isLoading, answerData }) {
 
   const renderedAnswerHtml = useMemo(() => {
     if (!answerData || !answerData.answer) return '';
-    return marked.parse(String(answerData.answer));
+    const rawAnswer = String(answerData.answer);
+    // Wrap standalone bracket citations [...] (not markdown links) in a translucent citation-badge span
+    const processedAnswer = rawAnswer.replace(
+      /\[([^\]]+)\](?!\()/g,
+      '<span class="citation-badge">[$1]</span>'
+    );
+    return marked.parse(processedAnswer);
   }, [answerData]);
 
   const getGreeting = () => {
