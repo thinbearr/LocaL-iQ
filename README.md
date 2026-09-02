@@ -202,10 +202,10 @@ Open **[http://localhost:5173](http://localhost:5173)** in your browser. LocaL-i
 
 ## 🌐 Demo / Deployment
 
-* **Live Demo**: *Coming soon*
+* **Live Production Backend**: [https://local-iq.onrender.com](https://local-iq.onrender.com)
 * **Local Installation**: Direct connection to your personal local Obsidian vaults on your local machine.
 
-*Note: A hosted web demo uses a pre-loaded sample knowledge base because web browsers cannot directly access an evaluator's local filesystem. Full local vault discovery and privacy require running the application locally.*
+*Note: A hosted web demo uses a pre-loaded sample knowledge base (`sample_vault/`) because web browsers cannot directly access an evaluator's local filesystem. Full local vault discovery and privacy require running the application locally.*
 
 ---
 
