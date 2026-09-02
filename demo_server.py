@@ -47,11 +47,15 @@ class DemoAppState:
         self.sample_vault_path = str((Path.cwd() / "sample_vault").resolve())
         self.active_vault_path = self.sample_vault_path
         self.persist_dir = os.getenv("CHROMA_DB_DIR", "./chroma_db")
-        self.embedder = get_embedder()
-        self.vector_store = ChromaVectorStore(persist_dir=self.persist_dir)
-        
+
+        # Deferred: embedder and vector_store are NOT created here.
+        # get_embedder() calls the Gemini SDK which makes network calls and must NOT
+        # run during Gunicorn module import or Gunicorn will not bind $PORT in time.
+        self.embedder = None
+        self.vector_store = None
+
         self.chat_history: List[Dict[str, str]] = []
-        
+
         # Hyperparameter Settings
         self.top_k_final = 5
         self.top_k_pool = 15
@@ -62,22 +66,21 @@ class DemoAppState:
 
         self._indexing_lock = threading.Lock()
         self._is_indexed = False
+        self.last_sync_time = "Not synced"
 
-        # Non-blocking startup check: if ChromaDB already has cached chunks, mark as indexed.
-        # DO NOT call sync_sample_vault() synchronously during __init__ so Gunicorn can bind to $PORT immediately.
-        current_stats = self.vector_store.get_stats()
-        if current_stats["total_chunks"] > 0:
-            self.last_sync_time = "Loaded from cache"
-            self._is_indexed = True
-        else:
-            self.last_sync_time = "Not synced"
-            self._is_indexed = False
+    def _init_embedder_and_store(self):
+        """Lazily create the embedder and vector store on first use. Safe to call multiple times."""
+        if self.embedder is None:
+            self.embedder = get_embedder()
+        if self.vector_store is None:
+            self.vector_store = ChromaVectorStore(persist_dir=self.persist_dir)
 
     def ensure_indexed(self):
         """Lazy-indexes sample_vault on demand before retrieval if Chroma vector store is empty."""
         if not self._is_indexed:
             with self._indexing_lock:
                 if not self._is_indexed:
+                    self._init_embedder_and_store()
                     current_stats = self.vector_store.get_stats()
                     if current_stats["total_chunks"] == 0 and os.path.exists(self.sample_vault_path):
                         self.sync_sample_vault()
@@ -88,6 +91,7 @@ class DemoAppState:
     def sync_sample_vault(self):
         if not os.path.exists(self.sample_vault_path):
             return None
+        self._init_embedder_and_store()
         vault_name = "sample_vault"
         parser = VaultParser(self.sample_vault_path)
         chunker = MarkdownChunker(max_chunk_size=800, min_chunk_size=50)
@@ -122,9 +126,14 @@ def get_status():
     state = get_state()
     active_name = "sample_vault"
     is_vault, msg = detect_obsidian_vault(state.sample_vault_path)
-    v_stats = state.vector_store.get_vault_stats(active_name)
-    total_stats = state.vector_store.get_stats()
-    
+    # vector_store may be None before first query (lazy init) — return zero stats safely.
+    if state.vector_store is not None:
+        v_stats = state.vector_store.get_vault_stats(active_name)
+        total_stats = state.vector_store.get_stats()
+    else:
+        v_stats = {"total_files": 0, "total_chunks": 0}
+        total_stats = {"total_files": 0, "total_chunks": 0}
+
     return jsonify({
         "active_vault_name": active_name,
         "active_vault_path": state.sample_vault_path,
@@ -143,13 +152,17 @@ def get_status():
 @app.route("/api/vaults", methods=["GET"])
 def get_vaults():
     state = get_state()
-    v_stats = state.vector_store.get_vault_stats("sample_vault")
-    
+    # vector_store may be None before first query (lazy init) — return zero chunk_count safely.
+    if state.vector_store is not None:
+        v_stats = state.vector_store.get_vault_stats("sample_vault")
+    else:
+        v_stats = {"total_files": 0, "total_chunks": 0}
+
     md_count = 0
     if os.path.exists(state.sample_vault_path):
         for root, _, files in os.walk(state.sample_vault_path):
             md_count += sum(1 for f in files if f.endswith(".md"))
-            
+
     vaults_list = [{
         "path": state.sample_vault_path,
         "name": "sample_vault",
@@ -163,6 +176,7 @@ def get_vaults():
 @app.route("/api/vaults/select", methods=["POST"])
 def select_vault():
     state = get_state()
+    state.ensure_indexed()
     sres = state.sync_sample_vault()
     return jsonify({"status": "success", "active_vault": state.sample_vault_path, "sync_res": sres})
 
@@ -170,6 +184,7 @@ def select_vault():
 @app.route("/api/vaults/rescan", methods=["POST"])
 def rescan_vaults():
     state = get_state()
+    state.ensure_indexed()
     state.sync_sample_vault()
     return get_vaults()
 
@@ -177,6 +192,7 @@ def rescan_vaults():
 @app.route("/api/vaults/sync", methods=["POST"])
 def sync_vault():
     state = get_state()
+    state.ensure_indexed()
     sres = state.sync_sample_vault()
     return jsonify({"status": "success", "sync_res": sres, "last_sync_time": state.last_sync_time})
 
@@ -184,6 +200,7 @@ def sync_vault():
 @app.route("/api/documents", methods=["GET"])
 def get_documents():
     state = get_state()
+    state.ensure_indexed()
     documents = state.vector_store.get_indexed_files_registry(vault_name="sample_vault")
     return jsonify({"documents": documents, "vault_scope": "sample_vault"})
 
@@ -191,6 +208,7 @@ def get_documents():
 @app.route("/api/documents/<path:file_name>", methods=["DELETE"])
 def delete_document(file_name):
     state = get_state()
+    state.ensure_indexed()
     state.vector_store.delete_file(file_name, vault_name="sample_vault")
     return jsonify({"status": "deleted", "file_name": file_name})
 
