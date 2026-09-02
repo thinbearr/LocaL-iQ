@@ -6,11 +6,30 @@
 
 It lets users connect their local Obsidian vaults and ask questions grounded in their own notes. The system combines **structure-aware Markdown processing, hybrid semantic + lexical retrieval, evidence gating, contextual expansion, and citation-aware Gemini generation**.
 
-### 🚀 Try the Live Demo
+### 🌐 Demo / Deployment
 
-**[Open LocaL-iQ →](https://local-iq.vercel.app/)**
+### 🚀 Live Demo
 
-> The public demo uses a bundled `sample_vault/` so it can be evaluated directly in a browser. Full local vault discovery and privacy are available when running LocaL-iQ locally.
+**[Launch LocaL-iQ](https://local-iq.vercel.app/)**
+
+The public demo runs the complete LocaL-iQ RAG pipeline against a bundled
+sample Obsidian vault, allowing evaluators to test the application without
+local installation.
+
+> **Demo note:** The hosted version uses `sample_vault/` because a cloud
+> deployment cannot access a visitor's local filesystem.
+
+### 🏠 Local Installation
+
+For full Obsidian integration, run LocaL-iQ locally. The local version
+automatically discovers Obsidian vaults on your machine and supports
+multi-vault retrieval, custom directory selection, and incremental
+synchronization.
+
+### 🔗 Links
+
+- **Live Demo:** https://local-iq.vercel.app/
+- **GitHub:** https://github.com/thinbearr/LocaL-iQ
 
 ---
 
@@ -36,6 +55,8 @@ LocaL-iQ turns unstructured Obsidian notes into a grounded, interactive knowledg
 
 ## 🏗️ RAG Architecture
 
+### Local Execution (Desktop)
+
 ```text
                    Obsidian Vault (.md files)
                               ↓
@@ -45,8 +66,7 @@ LocaL-iQ turns unstructured Obsidian notes into a grounded, interactive knowledg
                               ↓
                   Structure-Aware Chunking
                               ↓
-                    Local Embeddings
-                         MiniLM
+                 Sentence-Transformers / MiniLM
                               ↓
                     ChromaDB Vector Store
                               ↓
@@ -62,7 +82,27 @@ LocaL-iQ turns unstructured Obsidian notes into a grounded, interactive knowledg
                               ↓
                        Grounded Prompt
                               ↓
-                       Google Gemini
+                    Gemini 3.5 Flash Lite
+                              ↓
+                       Answer + Citations
+```
+
+### Public Cloud Demo (Render)
+
+```text
+                        sample_vault
+                              ↓
+                       Markdown Parsing
+                              ↓
+                  Structure-Aware Chunking
+                              ↓
+                     Gemini Embedding 2
+                              ↓
+                    ChromaDB Vector Store
+                              ↓
+           Same retrieval/reranking/grounding pipeline
+                              ↓
+                    Gemini 3.5 Flash Lite
                               ↓
                        Answer + Citations
 ```
@@ -391,11 +431,12 @@ LocaL-iQ/
 │
 ├── sample_vault/                     # Sample Obsidian vault
 │
-├── tests/                            # Automated test suite
+├── tests/                            # Automated test suite (12 tests)
 │   ├── test_chunker.py
 │   ├── test_evaluation_set.py
 │   ├── test_multi_file_kb.py
 │   ├── test_retriever.py
+│   ├── test_vault_discovery.py
 │   └── test_vault_parser.py
 │
 ├── server.py                         # Local Flask server
@@ -413,7 +454,7 @@ LocaL-iQ/
 
 ## 🧪 Testing
 
-Run the automated test suite:
+Run the automated test suite (12 tests):
 
 ```bash
 python -m pytest tests/ -v
@@ -422,7 +463,8 @@ python -m pytest tests/ -v
 The test suite validates:
 
 * Markdown structure-aware chunking and sibling linkage.
-* Vault discovery and Markdown parsing.
+* Automatic Obsidian vault discovery and refresh (`test_vault_discovery.py`).
+* Vault validity checks and new vault discovery after cache expiration.
 * Multi-file additive indexing.
 * File modification and deletion handling.
 * Hybrid vector + BM25 retrieval.
