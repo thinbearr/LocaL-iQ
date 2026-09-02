@@ -45,6 +45,9 @@ export default function App() {
   useEffect(() => {
     fetchStatus();
     fetchVaults();
+    // Poll vault list every 30s so newly created Obsidian vaults appear automatically
+    const vaultPoll = setInterval(fetchVaults, 30000);
+    return () => clearInterval(vaultPoll);
   }, []);
 
   const handleSelectVault = async (vaultPath) => {

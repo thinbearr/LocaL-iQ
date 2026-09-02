@@ -50,7 +50,7 @@ class ObsidianVaultDiscovery:
     """
 
     CACHE_FILE = ".vault_discovery_cache.json"
-    CACHE_TTL_SECONDS = 300  # Re-use cache for 5 minutes between restarts
+    CACHE_TTL_SECONDS = 10  # 10s TTL for fast auto-update on additions/deletions
 
     def __init__(self, extra_search_roots: Optional[List[str]] = None):
         self.extra_search_roots = extra_search_roots or []
@@ -69,6 +69,7 @@ class ObsidianVaultDiscovery:
             candidates = [
                 home / "Documents",
                 home / "Desktop",
+                home / "Downloads",
                 home / "OneDrive" / "Documents",
                 home / "OneDrive",
                 home / "Dropbox",
@@ -89,11 +90,48 @@ class ObsidianVaultDiscovery:
 
         return roots
 
+    def _discover_from_obsidian_config(self) -> Dict[str, VaultInfo]:
+        """
+        Directly checks official Obsidian application configuration file (obsidian.json)
+        to register any vault that the Obsidian desktop client has opened or created.
+        """
+        vaults: Dict[str, VaultInfo] = {}
+        try:
+            home = Path.home()
+            possible_configs = [
+                Path(os.getenv("APPDATA", "")) / "obsidian" / "obsidian.json",
+                home / "Library" / "Application Support" / "obsidian" / "obsidian.json",
+                home / ".config" / "obsidian" / "obsidian.json",
+            ]
+            for cfg in possible_configs:
+                if cfg.exists() and cfg.is_file():
+                    try:
+                        data = json.loads(cfg.read_text(encoding="utf-8"))
+                        v_map = data.get("vaults", {})
+                        for _, v_info in v_map.items():
+                            v_path_str = v_info.get("path")
+                            if v_path_str:
+                                p = Path(v_path_str).resolve()
+                                if p.exists() and p.is_dir() and (p / ".obsidian").is_dir():
+                                    is_v, count = self._is_obsidian_vault(p)
+                                    abs_str = str(p)
+                                    vaults[abs_str] = VaultInfo(
+                                        path=abs_str,
+                                        name=p.name,
+                                        md_count=count,
+                                        has_obsidian_dir=True,
+                                    )
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return vaults
 
     def _is_obsidian_vault(self, path: Path) -> Tuple[bool, int]:
         """
         Checks whether a directory is an Obsidian vault.
         Returns (is_vault, md_file_count).
+        A directory with a .obsidian folder is considered a valid vault even if empty.
         """
         has_obsidian = (path / ".obsidian").is_dir()
         if not has_obsidian:
@@ -111,7 +149,7 @@ class ObsidianVaultDiscovery:
         except (PermissionError, OSError):
             pass
 
-        return md_count > 0, md_count
+        return has_obsidian, md_count
 
     def scan_directory(self, root: Path, current_depth: int = 0) -> Dict[str, VaultInfo]:
         """Recursively scans a directory up to MAX_SCAN_DEPTH for vaults."""
@@ -155,13 +193,25 @@ class ObsidianVaultDiscovery:
         Main entry point for discovery.
         Returns a dict mapping absolute vault path -> VaultInfo.
         """
+        cfg_vaults = self._discover_from_obsidian_config()
+
         if not force_rescan and self._load_cache():
-            return self._vault_cache
+            # Ensure deleted or un-registered vaults are purged
+            combined = {}
+            for p, vi in self._vault_cache.items():
+                if Path(p).exists() and (Path(p) / ".obsidian").is_dir():
+                    if not cfg_vaults or p in cfg_vaults:
+                        combined[p] = vi
+            combined.update(cfg_vaults)
+            return combined
 
         discovered: Dict[str, VaultInfo] = {}
-        for root in self._default_search_roots():
-            found = self.scan_directory(root)
-            discovered.update(found)
+        if cfg_vaults:
+            discovered.update(cfg_vaults)
+        else:
+            for root in self._default_search_roots():
+                found = self.scan_directory(root)
+                discovered.update(found)
 
         # Always check ./sample_vault explicitly as a fallback
         sample_p = (Path.cwd() / "sample_vault").resolve()
