@@ -33,6 +33,9 @@ def add_cors_headers(response):
     return response
 
 
+import threading
+
+
 class DemoAppState:
     """
     Dedicated application state for public Render deployment mode.
@@ -57,12 +60,30 @@ class DemoAppState:
         self.raw_cosine_threshold = 0.28
         self.enable_query_expansion = False
 
-        # Index sample_vault automatically during application startup if database is empty
+        self._indexing_lock = threading.Lock()
+        self._is_indexed = False
+
+        # Non-blocking startup check: if ChromaDB already has cached chunks, mark as indexed.
+        # DO NOT call sync_sample_vault() synchronously during __init__ so Gunicorn can bind to $PORT immediately.
         current_stats = self.vector_store.get_stats()
-        if current_stats["total_chunks"] == 0 and os.path.exists(self.sample_vault_path):
-            self.sync_sample_vault()
-        else:
+        if current_stats["total_chunks"] > 0:
             self.last_sync_time = "Loaded from cache"
+            self._is_indexed = True
+        else:
+            self.last_sync_time = "Not synced"
+            self._is_indexed = False
+
+    def ensure_indexed(self):
+        """Lazy-indexes sample_vault on demand before retrieval if Chroma vector store is empty."""
+        if not self._is_indexed:
+            with self._indexing_lock:
+                if not self._is_indexed:
+                    current_stats = self.vector_store.get_stats()
+                    if current_stats["total_chunks"] == 0 and os.path.exists(self.sample_vault_path):
+                        self.sync_sample_vault()
+                    else:
+                        self.last_sync_time = "Loaded from cache"
+                    self._is_indexed = True
 
     def sync_sample_vault(self):
         if not os.path.exists(self.sample_vault_path):
@@ -73,11 +94,12 @@ class DemoAppState:
         notes = parser.parse_vault()
         sres = self.vector_store.sync_with_vault_notes(notes, self.embedder, chunker, vault_name=vault_name)
         self.last_sync_time = time.strftime("%H:%M:%S")
+        self._is_indexed = True
         return sres
 
 
 # Eagerly initialize application state at server startup (module load time)
-# Ensures sample_vault is pre-indexed before Gunicorn opens the HTTP socket
+# Module import takes < 10ms so Gunicorn opens the HTTP socket immediately
 _state = DemoAppState()
 
 
@@ -176,6 +198,7 @@ def delete_document(file_name):
 @app.route("/api/ask", methods=["POST"])
 def ask_question():
     state = get_state()
+    state.ensure_indexed()
     data = request.json or {}
     query = data.get("query", "").strip()
     if not query:
