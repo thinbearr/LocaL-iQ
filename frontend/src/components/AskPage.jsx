@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { marked } from 'marked';
+
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+});
 
 export default function AskPage({ status, onAsk, isLoading, answerData }) {
   const [query, setQuery] = useState('');
+
+  const renderedAnswerHtml = useMemo(() => {
+    if (!answerData || !answerData.answer) return '';
+    return marked.parse(String(answerData.answer));
+  }, [answerData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -58,7 +69,12 @@ export default function AskPage({ status, onAsk, isLoading, answerData }) {
       {answerData && (
         <div style={styles.answerCard}>
           <div style={styles.answerHeader}>Answer</div>
-          <div style={styles.answerBody}>{answerData.answer}</div>
+          <div style={styles.answerBody}>
+            <div
+              className="markdown-content"
+              dangerouslySetInnerHTML={{ __html: renderedAnswerHtml }}
+            />
+          </div>
 
           {answerData.primary_chunks && answerData.primary_chunks.length > 0 && (
             <div style={{ marginTop: '24px' }}>

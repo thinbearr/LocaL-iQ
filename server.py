@@ -120,7 +120,7 @@ def get_status():
         "total_files": total_stats["total_files"],
         "total_chunks": total_stats["total_chunks"],
         "last_sync_time": state.last_sync_time,
-        "model_name": os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+        "model_name": os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     })
 
 
@@ -312,7 +312,7 @@ def settings_handler():
             "raw_cosine_threshold": state.raw_cosine_threshold,
             "enable_query_expansion": state.enable_query_expansion,
             "persist_dir": state.persist_dir,
-            "model_name": os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+            "model_name": os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         })
     else:
         data = request.json or {}

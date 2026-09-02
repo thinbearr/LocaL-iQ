@@ -6,6 +6,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+# Force Gemini embeddings for the public demo BEFORE load_dotenv() or any src/ import.
+# This is an unconditional override — no Render env variable (including an empty string)
+# can cause get_embedder() to fall back to LocalEmbedder / SentenceTransformers / PyTorch.
+os.environ["EMBEDDING_PROVIDER"] = "gemini"
+
 load_dotenv()
 
 from src.vault_parser import VaultParser, detect_obsidian_vault
@@ -15,8 +20,6 @@ from src.vector_store import ChromaVectorStore
 from src.retriever import HybridRerankedRetriever, RetrievalResult
 from src.generator import GeminiLLMGenerator
 
-# Default to Gemini Embeddings for public cloud deployment mode if not explicitly set
-os.environ.setdefault("EMBEDDING_PROVIDER", "gemini")
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -110,7 +113,7 @@ def get_status():
         "total_files": total_stats["total_files"],
         "total_chunks": total_stats["total_chunks"],
         "last_sync_time": state.last_sync_time,
-        "model_name": os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+        "model_name": os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
         "mode": "public-demo"
     })
 
@@ -259,7 +262,7 @@ def settings_handler():
             "raw_cosine_threshold": state.raw_cosine_threshold,
             "enable_query_expansion": state.enable_query_expansion,
             "persist_dir": state.persist_dir,
-            "model_name": os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+            "model_name": os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         })
     else:
         data = request.json or {}

@@ -89,3 +89,135 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* Rich Markdown Content Styling for LocaL-iQ Dark Theme */
+.markdown-content {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.65;
+  font-size: 1.0rem;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: #FFFFFF;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
+  margin-top: 0;
+}
+
+.markdown-content h1 { font-size: 1.6rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.4rem; }
+.markdown-content h2 { font-size: 1.35rem; }
+.markdown-content h3 { font-size: 1.15rem; }
+.markdown-content h4 { font-size: 1.05rem; }
+
+.markdown-content strong,
+.markdown-content b {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.markdown-content em,
+.markdown-content i {
+  color: #CBD5E1;
+  font-style: italic;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.4rem;
+  color: var(--text-primary);
+}
+
+.markdown-content li::marker {
+  color: var(--accent-teal);
+}
+
+.markdown-content code {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+  color: var(--accent-teal-light);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.markdown-content pre {
+  background-color: #0E131F;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: #E2E8F0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--accent-teal);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 1.5rem 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--border-card);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: var(--bg-card);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
