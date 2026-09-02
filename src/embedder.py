@@ -33,12 +33,12 @@ class LocalEmbedder:
 
 class GeminiEmbedder:
     """
-    Lightweight cloud embedding generator using Google Gemini text-embedding-004 API.
+    Lightweight cloud embedding generator using Google Gemini gemini-embedding-2 API.
     Zero PyTorch footprint, zero local RAM usage (~0MB local model memory).
     Used in cloud deployment environments (e.g. Render 512MB RAM tier).
     """
 
-    def __init__(self, model_name: str = "text-embedding-004"):
+    def __init__(self, model_name: str = "gemini-embedding-2"):
         self.model_name = os.getenv("GEMINI_EMBED_MODEL", model_name)
         self._client = None
 
