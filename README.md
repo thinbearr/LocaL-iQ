@@ -22,7 +22,7 @@ LocaL-iQ turns unstructured Obsidian notes into a grounded, interactive knowledg
 * **Citation-Aware Answers**: Generates grounded answers using Google Gemini with explicit source file and section citations.
 * **Retrieval Inspector**: Developer and user transparency view showing candidate pool ranking, raw cosine scores, BM25 scores, hybrid fusion scores, and evidence selection.
 * **Anti-Hallucination Guardrail**: Returns a strict fallback message when no retrieved evidence satisfies the relevance threshold.
-* **Gemini-Powered Generation**: Leverages Google Gemini (`gemini-3.5-flash`) for precise, grounded synthesis.
+* **Gemini-Powered Generation**: Leverages Google Gemini (`gemini-3.5-flash-lite`) for precise, grounded synthesis.
 
 ---
 
@@ -126,7 +126,7 @@ The **Retrieval Inspector** tab provides full transparency into the retrieval an
 * **Rank-BM25**: `BM25Okapi` implementation for lexical keyword reranking.
 
 ### LLM Generation
-* **Google Gemini**: `google-genai` SDK using `gemini-3.5-flash` as the sole generation model.
+* **Google Gemini**: `google-genai` SDK using `gemini-3.5-flash-lite` as the sole generation model.
 
 ### Knowledge Source
 * **Obsidian**: Local Markdown `.md` vaults.
@@ -151,7 +151,7 @@ cp .env.example .env
 Edit `.env`:
 ```env
 GEMINI_API_KEY=your_actual_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 CHROMA_DB_DIR=./chroma_db
 ```
 
@@ -192,7 +192,7 @@ Open **[http://localhost:5173](http://localhost:5173)** in your browser. LocaL-i
 | Variable | Required | Default | Description |
 | :--- | :---: | :---: | :--- |
 | `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key for grounded answer generation. |
-| `GEMINI_MODEL` | No | `gemini-3.5-flash` | Gemini model variant. |
+| `GEMINI_MODEL` | No | `gemini-3.5-flash-lite` | Gemini model variant. |
 | `CHROMA_DB_DIR` | No | `./chroma_db` | Storage path for local ChromaDB database. |
 
 > [!IMPORTANT]

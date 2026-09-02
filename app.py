@@ -443,7 +443,7 @@ def main():
 
         with sett_tab2:
             st.markdown("#### LLM Generation Model")
-            model_display = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+            model_display = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
             st.info(f"Server Provider: Google Gemini ({model_display}) via environment secret key.")
 
         with sett_tab3:
